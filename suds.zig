@@ -17,6 +17,7 @@ const builtin = @import("builtin");
 const OUTPUT_ERROR = "Output error!";
 
 const Board = [9][9]usize;
+const BoolBoard = [9][9]bool;
 
 const BgColor = enum(u8) {
     green = 42,
@@ -151,10 +152,16 @@ fn solve(alloc: std.mem.Allocator, b_ptr: *Board) Board {
     var min_fits: usize = 10;
     var min_fits_place: Coords = undefined;
     var min_fits_vals: [10]bool = undefined;
+    var checked: BoolBoard = undefined;
 
     solving: while (true) {
         groups = GroupType.init_groups(&b, GroupType.row) ++ GroupType.init_groups(&b, GroupType.column) ++ GroupType.init_groups(&b, GroupType.block);
         min_fits = 10;
+        for (&checked) |*row| {
+            for (row) |*cell| {
+                cell.* = false;
+            }
+        }
         std.sort.insertion(Group, &groups, {}, sort_groups_by_missing);
         if (groups[groups.len - 1].get_missing_val_no() == 0) return b;
         for (groups) |g| {
@@ -162,6 +169,7 @@ fn solve(alloc: std.mem.Allocator, b_ptr: *Board) Board {
             for (g.get_missing_pos(), 0..) |vp, p| {
                 if (vp) {
                     const coords = g.get_coords(p);
+                    if (checked[coords.r][coords.c]) continue;
                     var missing_vals: [10]bool = g.get_missing_vals();
                     for (GroupType.others(g.g_type)) |gt| {
                         for (Group.init(&b, gt, Group.get_by_coords(gt, coords)).get_missing_vals(), 0..) |other_val, vi| {
@@ -209,6 +217,7 @@ fn solve(alloc: std.mem.Allocator, b_ptr: *Board) Board {
                         @memcpy(&min_fits_vals, &missing_vals);
                         min_fits_place = coords;
                     }
+                    checked[coords.r][coords.c] = true;
                 }
             }
         }
@@ -229,7 +238,7 @@ fn solve(alloc: std.mem.Allocator, b_ptr: *Board) Board {
     }
 }
 
-fn display_board(board: Board, op: [9][9]bool) void {
+fn display_board(board: Board, op: BoolBoard) void {
     var bg: BgColor = undefined;
     std.io.getStdOut().writer().print("\n-----------------\n", .{}) catch @panic(OUTPUT_ERROR);
     for (board, 0..) |row, r| {
@@ -255,7 +264,7 @@ fn display_board(board: Board, op: [9][9]bool) void {
     }
 }
 
-fn input_board(b: *Board, op: *[9][9]bool, halloc: std.mem.Allocator) void {
+fn input_board(b: *Board, op: *BoolBoard, halloc: std.mem.Allocator) void {
 
     var board = b.*;
     var orig_pos = op.*;
@@ -294,7 +303,7 @@ pub fn main() !void {
     const halloc = std.heap.page_allocator;
     std.io.getStdOut().writer().print("\n-~=Zig Sudoku Solver by Ko6i=~-\n\n", .{}) catch @panic(OUTPUT_ERROR);
 
-    var orig_pos: [9][9]bool = undefined;
+    var orig_pos: BoolBoard = undefined;
     var board: Board = undefined;
     input_board(&board, &orig_pos, halloc);
 

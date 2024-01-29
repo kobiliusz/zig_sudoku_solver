@@ -1,2 +1,4 @@
 /suds
 /suds.o
+/suds.exe*
+/suds.pdb
